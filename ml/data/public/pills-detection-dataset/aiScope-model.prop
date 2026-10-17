@@ -1,0 +1,15 @@
+instances 5
+core_mask 0
+centercrop 0
+
+nms_thresh 45
+box_thresh 15
+track_confirm_thresh 40
+iou_thresh 30
+max_age 60
+min_hits 7
+
+classes_of_interest ""
+draw_color FF00FFFF
+track_color FFFFFF00
+
