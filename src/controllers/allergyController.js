@@ -1603,7 +1603,26 @@ const buildAnalysis = async (payload, profile, questionnaireAnswers, medicineHis
 
 const applyMlPrediction = (analysisPayload, mlPrediction) => {
   if (!mlPrediction?.available) {
-    return analysisPayload;
+    return {
+      ...analysisPayload,
+      medicationKnowledge: {
+        ...(analysisPayload.medicationKnowledge || {}),
+        mlPrediction: {
+          ...mlPrediction,
+          available: false,
+          fallbackAvailable: true,
+          safetyResultGenerated: true,
+          analysisMode: 'clinical_rules_only',
+        },
+      },
+      dataUsed: {
+        ...(analysisPayload.dataUsed || {}),
+        mlEnabled: false,
+        safetyResultGenerated: true,
+        analysisMode: 'clinical_rules_only',
+        mlUnavailableReason: mlPrediction?.reason || 'Medicine safety ML service unavailable.',
+      },
+    };
   }
 
   const ruleScore = Number(analysisPayload.dataUsed?.ruleScore ?? analysisPayload.riskScore ?? 0);

@@ -1,8 +1,11 @@
 const axios = require('axios');
-const { ensureMlServiceAvailable } = require('./mlServiceManager');
 const { buildFdaSeriousFeaturePayload } = require('./mlFeatureBuilder');
 
-const ML_SERVICE_URL = (process.env.ML_SERVICE_URL || 'http://localhost:8001').replace(/\/+$/, '');
+const MEDICINE_SAFETY_ML_SERVICE_URL = (
+  process.env.MEDICINE_SAFETY_ML_SERVICE_URL
+  || process.env.ML_SERVICE_URL
+  || 'http://localhost:8001'
+).replace(/\/+$/, '');
 const ML_TIMEOUT_MS = Number(process.env.ML_TIMEOUT_MS || 60000);
 
 const clampPercent = (value) => Math.max(0, Math.min(100, value));
@@ -32,8 +35,7 @@ const predictMedicineRisk = async ({ analysisPayload, profile, questionnaireAnsw
   const payload = buildFdaSeriousFeaturePayload({ analysisPayload, profile, questionnaireAnswers });
 
   try {
-    await ensureMlServiceAvailable();
-    const response = await axios.post(`${ML_SERVICE_URL}/predict/medicine-safety`, payload, {
+    const response = await axios.post(`${MEDICINE_SAFETY_ML_SERVICE_URL}/predict/medicine-safety`, payload, {
       timeout: ML_TIMEOUT_MS,
     });
     const parsed = response.data || {};
@@ -57,11 +59,19 @@ const predictMedicineRisk = async ({ analysisPayload, profile, questionnaireAnsw
       featuresUsed: parsed.featuresUsed || Object.keys(payload),
       modelPath: parsed.modelPath,
       ...mapPredictionToRisk(parsed),
+      serviceUrl: MEDICINE_SAFETY_ML_SERVICE_URL,
     };
   } catch (error) {
+    const status = Number(error.response?.status) || null;
+    const remoteDetail = error.response?.data?.detail || error.response?.data?.error;
     return {
       available: false,
-      reason: error.response?.data?.detail || error.message || 'Failed to call medicine safety ML service.',
+      fallbackAvailable: true,
+      safetyResultGenerated: true,
+      analysisMode: 'clinical_rules_only',
+      reason: remoteDetail || error.message || 'Failed to call medicine safety ML service.',
+      status,
+      serviceUrl: MEDICINE_SAFETY_ML_SERVICE_URL,
       featurePayload: payload,
     };
   }
@@ -70,4 +80,5 @@ const predictMedicineRisk = async ({ analysisPayload, profile, questionnaireAnsw
 module.exports = {
   predictMedicineRisk,
   buildFdaSeriousFeaturePayload,
+  MEDICINE_SAFETY_ML_SERVICE_URL,
 };
