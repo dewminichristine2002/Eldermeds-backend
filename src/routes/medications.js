@@ -1,81 +1,9 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
 const { pool } = require('../config/db');
 const { requireAuth } = require('../middleware/authMiddleware');
+const intakeMlService = require('../services/intakeMlService');
 
 const router = express.Router();
-
-const projectPythonPath = path.resolve(__dirname, '..', '..', 'ml', '.venv311', 'Scripts', 'python.exe');
-const projectPythonFallbackPath = path.resolve(__dirname, '..', '..', 'ml', '.venv311', 'bin', 'python');
-const yoloConfigDir = path.resolve(__dirname, '..', '..', 'ml', '.ultralytics');
-
-const firstExistingPath = (...candidates) =>
-  candidates.find((candidate) => candidate && candidate !== 'python' && fs.existsSync(candidate));
-
-const getPythonCommand = () =>
-  firstExistingPath(
-    process.env.TABLET_IDENTITY_PYTHON,
-    process.env.PILL_ML_PYTHON,
-    process.env.INTAKE_ML_PYTHON,
-    projectPythonPath,
-    projectPythonFallbackPath
-  ) || 'python';
-
-const runPythonJsonScript = (scriptName, payload, timeoutMs = 30000) =>
-  new Promise((resolve, reject) => {
-    const scriptPath = path.resolve(__dirname, '..', '..', 'scripts', scriptName);
-    const child = spawn(getPythonCommand(), [scriptPath], {
-      cwd: path.resolve(__dirname, '..', '..'),
-      env: {
-        ...process.env,
-        YOLO_CONFIG_DIR: process.env.YOLO_CONFIG_DIR || yoloConfigDir,
-      },
-      windowsHide: true,
-    });
-
-    let stdout = '';
-    let stderr = '';
-    const timeout = setTimeout(() => {
-      child.kill();
-      reject(new Error(`${scriptName} timed out.`));
-    }, timeoutMs);
-
-    child.stdout.on('data', (data) => {
-      stdout += String(data);
-    });
-
-    child.stderr.on('data', (data) => {
-      stderr += String(data);
-    });
-
-    child.on('error', (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-
-    child.on('close', (code) => {
-      clearTimeout(timeout);
-      try {
-        const parsed = JSON.parse(stdout || '{}');
-        if (code !== 0 && parsed?.error) {
-          reject(new Error(parsed.error));
-          return;
-        }
-        if (code !== 0) {
-          reject(new Error(stderr || 'Tablet identity analysis failed.'));
-          return;
-        }
-        resolve(parsed);
-      } catch (error) {
-        reject(new Error(stderr || error.message || 'Invalid tablet identity analysis response.'));
-      }
-    });
-
-    child.stdin.write(JSON.stringify(payload));
-    child.stdin.end();
-  });
 
 const quoteIdentifier = (identifier) => `"${String(identifier).replace(/"/g, '""')}"`;
 
@@ -395,14 +323,7 @@ router.post('/identify-photo', requireAuth, async (req, res) => {
       }))
       .filter((item) => item.medicineName);
 
-    const analysis = await runPythonJsonScript(
-      'analyze_tablet_identity.py',
-      {
-        imageBase64,
-        candidates,
-      },
-      45000
-    );
+    const analysis = await intakeMlService.analyzeTabletIdentity({ imageBase64, candidates });
 
     return res.json({
       ...analysis,

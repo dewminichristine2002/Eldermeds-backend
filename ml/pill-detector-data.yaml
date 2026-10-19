@@ -1,6 +1,0 @@
-path: D:/Document/SLIIT/Research/Project/ElderMeds/backend/ml/data/public/pills-detection-dataset
-train: images/train
-val: images/val
-
-names:
-  0: pill
