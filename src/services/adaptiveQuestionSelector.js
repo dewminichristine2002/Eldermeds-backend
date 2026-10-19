@@ -1,8 +1,7 @@
 const questionRepository = require('../repositories/adaptiveQuestionBankRepository');
+const { CONFIDENCE_THRESHOLD } = require('../config/emotionModel');
 
-const modelMetadata = require('../../ml/emotion_classifier/selected_model_metadata.json');
-
-const SAFE_CONFIDENCE_THRESHOLD = Number(modelMetadata.confidence_threshold);
+const SAFE_CONFIDENCE_THRESHOLD = CONFIDENCE_THRESHOLD;
 const HISTORY_LOOKBACK_LIMIT = 7;
 const MIN_REPEATED_HISTORY_COUNT = 2;
 

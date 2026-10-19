@@ -1,10 +1,10 @@
 const axios = require('axios');
-const modelMetadata = require('../../ml/emotion_classifier/selected_model_metadata.json');
 const { ensureEmotionMlServiceAvailable } = require('./emotionMlServiceManager');
+const { CONFIDENCE_THRESHOLD, SUPPORTED_EMOTIONS } = require('../config/emotionModel');
 
 const DEFAULT_ML_SERVICE_URL = 'http://localhost:8001';
-const PROJECT_EMOTIONS = new Set(modelMetadata.supported_classes);
-const ML_CONFIDENCE_THRESHOLD = Number(modelMetadata.confidence_threshold);
+const PROJECT_EMOTIONS = new Set(SUPPORTED_EMOTIONS);
+const ML_CONFIDENCE_THRESHOLD = CONFIDENCE_THRESHOLD;
 const SUPPORTED_MODEL_VERSIONS = new Set([
   'tfidf_linear_svm_calibrated_v3',
   'minilm_logistic_regression_v4',
@@ -50,7 +50,7 @@ function normalizePrediction(data) {
 }
 
 async function requestEmotionPrediction(text, { client = axios, timeout = 2500 } = {}) {
-  const baseUrl = process.env.EMOTION_ML_SERVICE_URL || DEFAULT_ML_SERVICE_URL;
+  const baseUrl = process.env.EMOTION_ML_SERVICE_URL || process.env.ML_SERVICE_URL || DEFAULT_ML_SERVICE_URL;
   try {
     if (client === axios) await ensureEmotionMlServiceAvailable();
     const response = await client.post(`${baseUrl}/predict-emotion`, { text }, { timeout });

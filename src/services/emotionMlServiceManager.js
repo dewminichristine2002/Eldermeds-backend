@@ -2,9 +2,13 @@ const axios = require('axios');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const modelMetadata = require('../../ml/emotion_classifier/selected_model_metadata.json');
+const { SUPPORTED_EMOTIONS } = require('../config/emotionModel');
 
-const SERVICE_URL = (process.env.EMOTION_ML_SERVICE_URL || 'http://localhost:8001').replace(/\/+$/, '');
+const SERVICE_URL = (
+  process.env.EMOTION_ML_SERVICE_URL
+  || process.env.ML_SERVICE_URL
+  || 'http://localhost:8001'
+).replace(/\/+$/, '');
 const HEALTH_TIMEOUT_MS = Number(process.env.EMOTION_ML_HEALTH_TIMEOUT_MS || 1500);
 const STARTUP_TIMEOUT_MS = Number(process.env.EMOTION_ML_STARTUP_TIMEOUT_MS || 120000);
 const POLL_INTERVAL_MS = Number(process.env.EMOTION_ML_STARTUP_POLL_MS || 1000);
@@ -58,7 +62,7 @@ function expectedService(payload) {
   if (payload.model_version !== EXPECTED_MODEL) {
     return { ok: false, reason: 'model_mismatch', message: `Emotion classifier reports ${payload.model_version || 'no model version'}; expected ${EXPECTED_MODEL}.` };
   }
-  const expectedClasses = modelMetadata.supported_classes || [];
+  const expectedClasses = SUPPORTED_EMOTIONS;
   if (!Array.isArray(payload.supported_classes)
       || payload.supported_classes.length !== expectedClasses.length
       || expectedClasses.some((emotion) => !payload.supported_classes.includes(emotion))) {
