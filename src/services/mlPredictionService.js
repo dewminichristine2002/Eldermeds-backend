@@ -6,7 +6,10 @@ const MEDICINE_SAFETY_ML_SERVICE_URL = (
   || process.env.ML_SERVICE_URL
   || 'http://localhost:8001'
 ).replace(/\/+$/, '');
-const ML_TIMEOUT_MS = Number(process.env.ML_TIMEOUT_MS || 60000);
+const configuredTimeout = Number(process.env.MEDICINE_SAFETY_ML_TIMEOUT_MS || 12000);
+const MEDICINE_SAFETY_ML_TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout > 0
+  ? configuredTimeout
+  : 12000;
 
 const clampPercent = (value) => Math.max(0, Math.min(100, value));
 
@@ -36,7 +39,7 @@ const predictMedicineRisk = async ({ analysisPayload, profile, questionnaireAnsw
 
   try {
     const response = await axios.post(`${MEDICINE_SAFETY_ML_SERVICE_URL}/predict/medicine-safety`, payload, {
-      timeout: ML_TIMEOUT_MS,
+      timeout: MEDICINE_SAFETY_ML_TIMEOUT_MS,
     });
     const parsed = response.data || {};
 
@@ -81,4 +84,5 @@ module.exports = {
   predictMedicineRisk,
   buildFdaSeriousFeaturePayload,
   MEDICINE_SAFETY_ML_SERVICE_URL,
+  MEDICINE_SAFETY_ML_TIMEOUT_MS,
 };
